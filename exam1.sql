@@ -267,7 +267,7 @@ CALL addEmployeeInfo('Ngô Đăng Anh Tôn', 'ndat@gmail.com', '0988928930', 'H�
 DELIMITER //
 CREATE PROCEDURE getSalaryByEmployeeId(IN p_EmployeeId INT)
 BEGIN
-    SELECT 
+    SELECT distinct
         e.Id, 
         e.Name AS EmployeeName, 
         e.Phone, 
@@ -277,7 +277,7 @@ BEGIN
         l.AllowanceSalary, 
         s.BonusSalary, 
         s.Insurrance, 
-        -- sum(ts.Value),
+        sum(ts.Value) AS TotalDays, 
         (l.BasicSalary + l.AllowanceSalary + IFNULL(s.BonusSalary, 0) - s.Insurrance) AS TotalSalary
     FROM 
         Employee e
@@ -285,9 +285,24 @@ BEGIN
         Levels l ON e.LevelId = l.Id
     JOIN 
         Salary s ON e.Id = s.EmployeeId
-    WHERE 
-        e.Id = 2;
+	JOIN
+		timesheets ts on ts.EmployeeId = e.Id
+    
+	GROUP BY 
+    e.Id, e.Name, e.Phone, e.Email, l.BasicSalary, l.AllowanceSalary, s.BonusSalary, s.Insurrance;
 END //
 DELIMITER ;
-call getSalaryByEmployeeId(2);
+call getSalaryByEmployeeId(10);
 drop procedure getSlaryByEmployeeId;
+drop database qls_hr;
+create trigger before_insert_into_salary
+before insert
+on salary
+for each row
+begin
+declare baseSalary float ;
+select BasicSalary into baseSalary from levels l join employee e
+on l. Id = e.levelId where e.Id = NEW.employeeId;
+set NEW.Insurance =0.1*baseSalary;
+
+end;
